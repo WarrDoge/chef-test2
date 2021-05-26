@@ -21,8 +21,11 @@ verifier:
   name: inspec
 
 platforms:
-  - name: ubuntu-18.04
   - name: centos-7
+    driver_config:
+      customize:
+        memory: 4096
+
 
 suites:
   - name: default
