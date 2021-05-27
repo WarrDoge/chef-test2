@@ -1,16 +1,10 @@
-# InSpec test for recipe chef-server-test::default
-
-# The InSpec reference, with examples and extensive documentation, can be
-# found at https://www.inspec.io/docs/reference/resources/
-
-unless os.windows?
-  # This is an example test, replace with your own test.
-  describe user('root'), :skip do
-    it { should exist }
-  end
+describe package('chef-server-core.x86_64') do
+  it { should be_installed }
+  its('version') { should eq '14.4.4-1.el7' }
 end
-
-# This is an example test, replace it with your own test.
-describe port(80), :skip do
-  it { should_not be_listening }
+describe command('chef-server-ctl user-list') do
+  its('stdout') { should eq "admin\npivotal\n" }
+end
+describe command('chef-server-ctl org-list') do
+  its('stdout') { should eq "someorg\n" }
 end

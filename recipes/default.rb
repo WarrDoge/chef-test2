@@ -1,50 +1,63 @@
-#
 # Cookbook:: chef-server-test
 # Recipe:: default
 
-
-# -----------
-# From source
-# -----------
-
-# Create a package directory
-directory "/chef" do
-	action :create	
-end
-
-
-# Download package
-remote_file '/chef/chef-server-core-14.4.4-1.el7.x86_64.rpm' do
-	source 'https://packages.chef.io/files/stable/chef-server/14.4.4/el/7/chef-server-core-14.4.4-1.el7.x86_64.rpm'
-	action :create_if_missing	
-end
-
-
+# ---------------
 # Install package
-rpm_package 'chefServerCoreInstall' do
-	package_name '/chef/chef-server-core-14.4.4-1.el7.x86_64.rpm'
-	action :install
-end	
+# ---------------
+pkg_source = node['pkg_source']
+pkg_name = node['pkg_name']
 
+rpm_package pkg_name do
+  source pkg_source
+  action :install
+end 
 
+# -----------------------------------
 # Chef reconfigure and accept license
-execute 'chefReconfigure' do
-	command 'chef-server-ctl reconfigure --chef-license accept'
+# -----------------------------------
+execute 'chef_reconfigure' do
+  command 'chef-server-ctl reconfigure --chef-license accept'
+  not_if 'ls /etc/opscode | grep -q -w pivotal.rb'
 end
 
+# -----------
+# Create user
+# -----------
+user_name = node['user_name'][node['current_user'] - 1]
+user_mail = node['user_mail'][node['current_user'] - 1]
+user_pass = (0...10).map { ('a'..'z').to_a[rand(50)] }.join
+org_name = node['org_name']
+org_full_name = node['org_full_name']
 
-# Create User
-execute 'chefCreateAdmin' do
-	command 'chef-server-ctl user-create admin admin admin my@email.com root228' #-f /etc/chef/admin.pem
-	not_if 'chef-server-ctl user-list | grep -q admin'
+execute 'chef_create_user' do
+  command "chef-server-ctl user-create #{user_name} #{user_name} #{user_name} #{user_mail} #{user_pass}"
+  not_if "chef-server-ctl user-list | grep -q -w #{user_name}"
 end
 
-
-# Create org and attache user
-execute 'chefCreateOrg' do
-	command 'chef-server-ctl org-create someorg "voprosovNet" -a admin'
-	not_if 'chef-server-ctl org-list | grep -q someorg'
+# --------------
+# Save user pass
+# --------------
+file "/#{user_name}.txt" do
+  content "#{user_pass}"
+  mode '700'
+  owner 'root'
+  group 'root'
+  not_if "ls / | grep -q -w #{user_name}.txt"
 end
 
+# ----------
+# Create org
+# ----------
+org_name = node['org_name']
+org_full_name = node['org_full_name']
+execute 'chef_create_org' do
+  command "chef-server-ctl org-create #{org_name} '#{org_full_name}'"
+  not_if "chef-server-ctl org-list | grep -q -w #{org_name}"
+end
 
-# Copyright:: 2021, The Authors, All Rights Reserved.
+# ---------------
+# Add user to org
+# ---------------
+execute 'chef_add_user_to_org' do
+  command "chef-server-ctl org-user-add #{org_name} #{user_name}"
+end
