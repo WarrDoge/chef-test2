@@ -23,19 +23,23 @@ execute 'chefReconfigure' do
 end
 
 
-# -----------
-# Create User
-# -----------
+# ------------------------------------
+# Create user and org, add user to org
+# ------------------------------------
+orgName = node['orgName']
+orgFullName = node['orgFullName']
 user = node['userName']
 userMail = node['userMail']
 userPass = (0...10).map { ('a'..'z').to_a[rand(10)] }.join
 File.write("pass.txt", "user: #{user}\nemail: #{userMail}\npassword: #{userPass}\n", mode: "a")
 execute 'chefCreateAdmin' do
-  command "chef-server-ctl user-create #{user} #{user} #{user} #{userMail} #{userPass}"
+  command "chef-server-ctl user-create #{user} #{user} #{user} #{userMail} #{userPass} && chef-server-ctl org-create #{orgName} ""#{orgFullName}"" -a #{user}"
   not_if "chef-server-ctl user-list | grep -q #{user}"
 end
 
 
+=begin --> old
+  
 # ---------------------------
 # Create org and attache user
 # ---------------------------
